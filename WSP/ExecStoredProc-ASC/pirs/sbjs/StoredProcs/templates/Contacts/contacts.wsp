@@ -1,0 +1,50 @@
+[DESCRIPTION]
+SYSTEM: ASC
+DEPLOY - ASC ONLY
+
+Draws the contacts tab for the policy center on the ASC.
+[END DESCRIPTION]
+
+[HISTORY]
+05/08/2007 - HMI-C10880 - Removed notice about required contacts, and added history section
+05/24/2007 - HMI-C11072 - Update to dtp contacts table.
+07/05/2007 - MSAEC (11228) - Changed to look at enabled flag to see whether a contact is editable.
+01/23/2013 - PCO-C26877 - Remove hyperlink for Producer, CSR, and Accounting/Billing. Replaced CnEdit with canChange in changelink logic.
+05/06/2016 - MR-C35497-004 - Increase size of CREATEDBY & MODIFIEDBY to accept an integer user id
+04/03/2019 - MAG-C43669 - Changed stored procedure CONTACTSLIST_LISTSQL_SECTION to up_contacts_tablist
+08/29/2019 - ADA-C40570 - Enhanced security by adding Parameters and Redirect Sections.
+08/10/2023 - LAC-53366-003 - Added single quotes around SESSION ID.
+[END HISTORY]
+
+[SPECS]
+TITLE=Contacts Add/Edit
+BANNER=N
+BOX=N
+NODIM=N
+NOSAVE=Y
+MORESET=Y
+PARAMETERS=D
+DEBUG=N
+USEMAP=N
+
+SEARCHFIELDS=Y
+LISTSQL=@GETSECTION
+LISTBREAKLIST_DESCRIP
+LISTBREAKCOLUMNS=2
+SUBLIST=CONTACTSLIST
+LISTONLY=N
+LISTCOUNT=N
+LISTINDENT=100%
+DELETEsp=up_contacts_deleteContact
+REDIRECT=GETSECTION
+[END SPECS]
+
+[REDIRECT_SECTION]
+VAR$QL:
+declare @ret varchar(8000),
+        @message varchar(8000)
+
+select @ret = '',
+       @message = ''
+
+exec up_asc_isValidRequest $USERID, '$SESSIONID', '$AGENCY', '', @ret output, @message output
