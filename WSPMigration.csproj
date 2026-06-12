@@ -1,0 +1,69 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+    <!--
+    Blazor WebAssembly Project Configuration
+    Maps WSP application to modern ASP.NET Core Blazor
+    
+    Alternative: For Blazor Server, use:
+    <Project Sdk="Microsoft.NET.Sdk.Web">
+    and adjust PropertyGroup accordingly
+    -->
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <InvariantGlobalization>false</InvariantGlobalization>
+        
+        <!-- Project Info -->
+        <ProjectName>WSPMigration</ProjectName>
+        <Description>ASP.NET Core Blazor migration of WSP (Web Script Page) application</Description>
+        <Version>1.0.0</Version>
+        <Authors>Your Team</Authors>
+        <Company>Your Company</Company>
+    </PropertyGroup>
+
+    <!-- Package References for Blazor WebAssembly -->
+    <ItemGroup>
+        <!-- Blazor WebAssembly -->
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.0" PrivateAssets="all" />
+
+        <!-- HTTP Communication -->
+        <PackageReference Include="System.Net.Http.Json" Version="8.0.0" />
+
+        <!-- Data Access -->
+        <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
+        <PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.5" />
+
+        <!-- Logging -->
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
+
+        <!-- Configuration -->
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+
+        <!-- DI/IoC -->
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+
+        <!-- Optional: Bootstrap and UI -->
+        <PackageReference Include="Bootstrap" Version="5.3.0" />
+
+        <!-- Optional: Validation -->
+        <PackageReference Include="System.ComponentModel.Annotations" Version="4.7.0" />
+    </ItemGroup>
+
+    <!-- Conditionally include server-side packages for Blazor Server mode -->
+    <ItemGroup Condition="'$(BlazorMode)' == 'Server'">
+        <PackageReference Include="Microsoft.AspNetCore.Components.Server" Version="8.0.0" />
+    </ItemGroup>
+
+    <!-- Development-only packages -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.VisualStudio.Web.BrowserLink" Version="8.0.0" />
+    </ItemGroup>
+
+    <!-- Build Properties -->
+    <PropertyGroup>
+        <NoWarn>$(NoWarn);CS0162;IDE0005</NoWarn>
+    </PropertyGroup>
+</Project>

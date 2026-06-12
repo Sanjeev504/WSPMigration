@@ -1,0 +1,434 @@
+@page "/contacts"
+@using WSPMigration.Models
+@using System.Collections.Generic
+@inject HttpClient Http
+
+<div class="contacts-container">
+    <!-- 
+    Maps to WSP: Contacts.wsp
+    - Title: TITLE=Contacts Add/Edit
+    - Configuration: BANNER=N, BOX=N, NODIM=N, NOSAVE=Y
+    - Features: SEARCHFIELDS=Y, LISTONLY=N, LISTCOUNT=N
+    - Break columns: LISTBREAKCOLUMNS=2
+    -->
+    
+    <h1>Contacts Add/Edit</h1>
+    <p class="system-info">ASC - ASC ONLY DEPLOYMENT</p>
+
+    <!-- Search Section (WSP: SEARCHFIELDS=Y) -->
+    <div class="search-section">
+        <div class="search-fields">
+            <div class="form-group">
+                <label for="searchText">Search Contacts:</label>
+                <input type="text" 
+                       id="searchText" 
+                       class="form-control" 
+                       placeholder="Enter search criteria"
+                       @bind="searchText"
+                       @onkeyup="OnSearchKeyUp" />
+            </div>
+            <button class="btn btn-primary" @onclick="SearchContacts">Search</button>
+            <button class="btn btn-secondary" @onclick="ResetSearch">Reset</button>
+        </div>
+    </div>
+
+    <!-- Validation/Loading Status -->
+    @if (isLoading)
+    {
+        <div class="alert alert-info">Loading contacts...</div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    @if (!isValid)
+    {
+        <div class="alert alert-warning">
+            <strong>Validation Failed:</strong> @validationMessage
+        </div>
+    }
+
+    <!-- 
+    Contacts List Section (WSP: SUBLIST=CONTACTSLIST)
+    - LISTSQL=@GETSECTION - data from stored procedure
+    - LISTBREAKLIST_DESCRIP - break list by description
+    - LISTBREAKCOLUMNS=2 - two columns
+    - LISTONLY=N - editable list
+    -->
+    @if (isValid && contactList != null && contactList.Contacts.Count > 0)
+    {
+        <div class="contacts-list-section">
+            <div class="list-header">
+                <h2>Contacts List (@contactList.Contacts.Count)</h2>
+                <!-- WSP: LISTCOUNT=N - but showing count for reference -->
+            </div>
+
+            <!-- Two Column Layout (LISTBREAKCOLUMNS=2) -->
+            <div class="contacts-grid two-columns">
+                @foreach (var contact in contactList.Contacts)
+                {
+                    <div class="contact-item" style="margin-left: 100%;">
+                        <!-- WSP: LISTINDENT=100% -->
+                        <div class="contact-card">
+                            <div class="contact-header">
+                                <h3>@contact.ContactName</h3>
+                                <span class="contact-type-badge">@contact.ContactType</span>
+                            </div>
+
+                            <div class="contact-details">
+                                <div class="detail-row">
+                                    <span class="label">Status:</span>
+                                    <span class="value">
+                                        @if (contact.IsEnabled)
+                                        {
+                                            <span class="badge badge-success">Enabled</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge badge-secondary">Disabled</span>
+                                        }
+                                    </span>
+                                </div>
+
+                                <div class="detail-row">
+                                    <span class="label">Created By:</span>
+                                    <span class="value">User ID @contact.CreatedBy</span>
+                                </div>
+
+                                <div class="detail-row">
+                                    <span class="label">Created Date:</span>
+                                    <span class="value">@contact.CreatedDate.ToString("g")</span>
+                                </div>
+
+                                <div class="detail-row">
+                                    <span class="label">Modified By:</span>
+                                    <span class="value">User ID @contact.ModifiedBy</span>
+                                </div>
+
+                                <div class="detail-row">
+                                    <span class="label">Modified Date:</span>
+                                    <span class="value">@contact.ModifiedDate.ToString("g")</span>
+                                </div>
+                            </div>
+
+                            <div class="contact-actions">
+                                <!-- 
+                                Permission checks - replaces WSP 'canChange' logic (PCO-C26877)
+                                Removed hyperlink display for Producer, CSR, and Accounting/Billing
+                                -->
+                                @if (contact.CanChange)
+                                {
+                                    <button class="btn btn-sm btn-primary" 
+                                            @onclick="@(() => EditContact(contact))">
+                                        Edit
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Read Only</span>
+                                }
+
+                                <!-- Delete action (WSP: DELETEsp=up_contacts_deleteContact) -->
+                                @if (contact.CanChange)
+                                {
+                                    <button class="btn btn-sm btn-danger" 
+                                            @onclick="@(() => DeleteContact(contact.ContactId, contact.ContactName))">
+                                        Delete
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else if (isValid && (contactList == null || contactList.Contacts.Count == 0))
+    {
+        <div class="alert alert-info">No contacts found.</div>
+    }
+</div>
+
+<style>
+    .contacts-container {
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 20px;
+    }
+
+    .system-info {
+        color: #666;
+        font-size: 0.9em;
+        margin-bottom: 20px;
+    }
+
+    .search-section {
+        background-color: #f9f9f9;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+
+    .search-fields {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+    }
+
+    .search-fields .form-group {
+        flex: 1;
+        margin-bottom: 0;
+    }
+
+    .contacts-grid {
+        display: grid;
+        gap: 20px;
+    }
+
+    .contacts-grid.two-columns {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 768px) {
+        .contacts-grid.two-columns {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .contact-item {
+        /* WSP: LISTINDENT=100% */
+    }
+
+    .contact-card {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        background-color: #fff;
+    }
+
+    .contact-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+    }
+
+    .contact-header h3 {
+        margin: 0;
+        font-size: 1.2em;
+    }
+
+    .contact-type-badge {
+        background-color: #e9ecef;
+        padding: 4px 8px;
+        border-radius: 3px;
+        font-size: 0.85em;
+    }
+
+    .contact-details {
+        margin-bottom: 15px;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        font-size: 0.95em;
+    }
+
+    .detail-row .label {
+        font-weight: 500;
+        color: #666;
+    }
+
+    .contact-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #eee;
+    }
+
+    .btn-sm {
+        padding: 5px 10px;
+        font-size: 0.85em;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 3px;
+        font-size: 0.85em;
+    }
+
+    .badge-success {
+        background-color: #d4edda;
+        color: #155724;
+    }
+
+    .badge-secondary {
+        background-color: #e2e3e5;
+        color: #383d41;
+    }
+</style>
+
+@code {
+    // Maps to WSP input variables
+    private int userId = 0;
+    private string sessionId = string.Empty;
+    private string agency = string.Empty;
+
+    // UI state
+    private string searchText = string.Empty;
+    private bool isLoading = false;
+    private bool isValid = false;
+    private string validationMessage = string.Empty;
+    private string errorMessage = string.Empty;
+
+    // Data model (WSP: SUBLIST=CONTACTSLIST)
+    private ContactListResponse contactList;
+
+    /// <summary>
+    /// Component initialization
+    /// Maps to WSP: REDIRECT_SECTION validation
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Get context from session/query parameters
+            // In real implementation, would come from authentication/session
+            userId = 1; // Example
+            sessionId = "session_123"; // Example
+            agency = "ASC"; // Example
+
+            // Validate request (WSP: REDIRECT_SECTION -> up_asc_isValidRequest)
+            await ValidateAndLoadContacts();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading page: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Validates request and loads contacts
+    /// Maps to WSP: REDIRECT_SECTION + LISTSQL=@GETSECTION
+    /// </summary>
+    private async Task ValidateAndLoadContacts()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var request = new ContactListRequest
+            {
+                UserId = userId,
+                SessionId = sessionId,
+                Agency = agency,
+                SearchText = searchText
+            };
+
+            // This would call the API endpoint
+            // In real implementation: contactList = await Http.PostAsJsonAsync(...)
+            contactList = new ContactListResponse
+            {
+                IsValid = true,
+                Message = "Contacts loaded successfully",
+                Contacts = new List<ContactDto>()
+                // Would be populated from API call
+            };
+
+            isValid = contactList.IsValid;
+            if (!isValid)
+            {
+                validationMessage = contactList.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading contacts: {ex.Message}";
+            isValid = false;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Handles search functionality
+    /// Maps to WSP: SEARCHFIELDS=Y
+    /// </summary>
+    private async Task SearchContacts()
+    {
+        await ValidateAndLoadContacts();
+    }
+
+    /// <summary>
+    /// Resets search and reloads all contacts
+    /// </summary>
+    private async Task ResetSearch()
+    {
+        searchText = string.Empty;
+        await ValidateAndLoadContacts();
+    }
+
+    /// <summary>
+    /// Handles key press in search field
+    /// </summary>
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchContacts();
+        }
+    }
+
+    /// <summary>
+    /// Edit contact action
+    /// Would navigate to edit page or open modal
+    /// </summary>
+    private void EditContact(ContactDto contact)
+    {
+        // Would navigate to edit page with contact.ContactId
+        Console.WriteLine($"Edit contact: {contact.ContactName}");
+    }
+
+    /// <summary>
+    /// Delete contact action
+    /// Maps to WSP: DELETEsp=up_contacts_deleteContact
+    /// Then redirects via WSP: REDIRECT=GETSECTION
+    /// </summary>
+    private async Task DeleteContact(int contactId, string contactName)
+    {
+        if (await ConfirmDelete(contactName))
+        {
+            try
+            {
+                // Call delete API
+                // await Http.DeleteAsync($"api/contacts/{contactId}...");
+                
+                // Reload contacts list (WSP: REDIRECT=GETSECTION)
+                await ValidateAndLoadContacts();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error deleting contact: {ex.Message}";
+            }
+        }
+    }
+
+    /// <summary>
+    /// Confirm delete action
+    /// </summary>
+    private async Task<bool> ConfirmDelete(string contactName)
+    {
+        return await JSRuntime.InvokeAsync<bool>("confirm", $"Delete contact '{contactName}'?");
+    }
+}
